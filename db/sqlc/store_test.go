@@ -22,6 +22,7 @@ func TestTransferTx(t *testing.T) {
 	amount := int64(10)
 	errs := make(chan error, n)
 	results := make(chan TransferTxResult, n)
+	existed := make(map[int]bool)
 
 	for i := 0; i < n; i++ {
 		go func(i int) {
@@ -92,5 +93,30 @@ func TestTransferTx(t *testing.T) {
 		toAccount := result.ToAccount
 		require.NotEmpty(t, toAccount, fmt.Sprintf("tx %d: toAccount is empty", i))
 		require.Equal(t, account2.ID, toAccount.ID, fmt.Sprintf("tx %d: toAccount.ID is not equal to account2.ID", i))
+
+		// check account's balance
+		fmt.Println(">> tx", i, "before:", fromAccount.Balance, toAccount.Balance)
+		diff1 := account1.Balance - fromAccount.Balance
+		diff2 := toAccount.Balance - account2.Balance
+		require.Equal(t, diff1, diff2, fmt.Sprintf("tx %d: diff1 is not equal to diff2", i))
+		require.True(t, diff1 > 0, fmt.Sprintf("tx %d: diff1 is not greater than 0", i))
+		require.True(t, diff1%amount == 0, fmt.Sprintf("tx %d: diff1 is not divisible by amount", i))
+
+		k := int(diff1 / amount)
+		require.True(t, k >= 1 && k <= n, fmt.Sprintf("tx %d: k is not between 1 and n", i))
+		require.NotEmpty(t, result.Transfer, fmt.Sprintf("tx %d: transfer is empty", i))
+
+		require.NotContains(t, existed, k)
+		existed[k] = true
 	}
+
+	// Check the final updated balances
+	updateAccount1, err1 := testQueries.GetAccount(context.Background(), account1.ID)
+	require.NoError(t, err1)
+	updateAccount2, err2 := testQueries.GetAccount(context.Background(), account2.ID)
+	require.NoError(t, err2)
+
+	fmt.Printf(">> after: %v, %v\n", updateAccount1.Balance, updateAccount2.Balance)
+	require.Equal(t, account1.Balance-int64(n)*amount, updateAccount1.Balance)
+	require.Equal(t, account2.Balance+int64(n)*amount, updateAccount2.Balance)
 }
