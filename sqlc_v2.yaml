@@ -1,0 +1,19 @@
+version: "2"
+sql:
+    - schema: "db/migration" # thư mục chứa các file migration
+      queries: "db/query" # thư mục chứa các file query
+      engine: "postgresql" # loại database sử dụng
+      gen:
+          go:
+              package: "db" # tên package của file generate
+              out: "db/sqlc" # thư mục chứa file generate
+              sql_package: "pgx/v5"
+              emit_db_tags: true # generate các tag cho các struct
+              emit_json_tags: true # generate các tag cho các struct để sử dụng với json
+              emit_interface: true # generate interface cho các function
+              emit_empty_slices: true # generate slice rỗng cho các field có thể null
+              overrides:
+                  - db_type: "timestamptz" # loại dữ liệu trong database
+                    go_type: "time.Time" # loại dữ liệu trong go
+                  - db_type: "uuid"
+                    go_type: "github.com/google/uuid.UUID"
