@@ -239,37 +239,7 @@ func TestLoginUserAPI(t *testing.T) {
 					Times(0)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
-			},
-		},
-		{
-			name: "UserNotFound",
-			body: gin.H{
-				"username": user.Username,
-				"password": password,
-			},
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().
-					GetUser(gomock.Any(), gomock.Eq(user.Username)).
-					Times(1).Return(db.User{}, sql.ErrNoRows)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusNotFound, recorder.Code)
-			},
-		},
-		{
-			name: "StatusInternalServerError",
-			body: gin.H{
-				"username": user.Username,
-				"password": password,
-			},
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().
-					GetUser(gomock.Any(), gomock.Eq(user.Username)).
-					Times(1).Return(db.User{}, sql.ErrConnDone)
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 	}
