@@ -6,13 +6,20 @@ import (
 	"fmt"
 )
 
-type Store struct {
+// Store provides all function to execute db queries and transaction
+type Store interface {
+	Querier
+	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+}
+
+// SQLStore provides all fucntion to excecute SQL queries and transaction
+type SQLStore struct {
 	*Queries
 	db *sql.DB
 }
 
-func NewStore(db *sql.DB) *Store {
-	return &Store{
+func NewStore(db *sql.DB) Store {
+	return &SQLStore{
 		db:      db,
 		Queries: New(db),
 	}
@@ -22,7 +29,7 @@ func NewStore(db *sql.DB) *Store {
 // It takes a context and a function that takes Queries as input and returns an error.
 // If the function returns an error, the transaction is rolled back.
 // Otherwise, the transaction is committed.
-func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) error {
 	// Begin a new transaction
 	tx, err := store.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -67,7 +74,7 @@ type TransferTxResult struct {
 	ToEntry     Entry    `json:"to_entry"`
 }
 
-func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
+func (store *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 	var result TransferTxResult
 	fmt.Println("starting transfer tx")
 	if store == nil {
