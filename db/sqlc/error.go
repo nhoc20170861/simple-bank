@@ -1,6 +1,10 @@
 package db
 
-import "github.com/lib/pq"
+import (
+	"errors"
+
+	"github.com/lib/pq"
+)
 
 const (
 	ForeignKeyViolation = "23503"
@@ -13,4 +17,12 @@ var ErrForeignKeyViolation = &pq.Error{
 
 var ErrUniqueViolation = &pq.Error{
 	Code: pq.ErrorCode(UniqueViolation),
+}
+
+func ErrorCode(err error) string {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return string(pqErr.Code)
+	}
+	return ""
 }

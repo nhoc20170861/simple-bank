@@ -9,24 +9,28 @@ import (
 	"github.com/nhoc20170861/simple-bank/pb"
 	"github.com/nhoc20170861/simple-bank/util"
 	val "github.com/nhoc20170861/simple-bank/validator"
+	"github.com/nhoc20170861/simple-bank/worker"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+// CreateUser creates a new user with the given username, password, full_name, and email.
+// This endpoint is idempotent.
 func (server *Server) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-
+	// Validate the request
 	violations := validateCreateUserRequest(req)
 	if violations != nil {
 		return nil, invalidArgumentError(violations)
 	}
 
+	// Hash the password
 	hashedPassword, err := util.HashPassword(req.GetPassword())
 	if err != nil {
-
 		return nil, status.Errorf(codes.Internal, "failed to hash password: %v", err)
 	}
 
+	// Create the user
 	arg := db.CreateUserParams{
 		Username:       req.Username,
 		HashedPassword: hashedPassword,
@@ -47,6 +51,15 @@ func (server *Server) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 			}
 		}
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+	}
+
+	// Distribute the task to send the verification email
+	taskPayload := &worker.PayloadSendVerifyEmail{
+		Username: user.Username,
+	}
+	err = server.taskDistributor.DistributeTaskSendVerifyEmail(ctx, taskPayload, nil)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to distribute task: %v", err)
 	}
 
 	resp := &pb.CreateUserResponse{
